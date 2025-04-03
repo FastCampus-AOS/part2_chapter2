@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Build
@@ -29,6 +30,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private var recorder: MediaRecorder? = null
+    private var player: MediaPlayer? = null
     private var fileName: String = ""
     private var state: State = State.RELEASE
 
@@ -40,11 +42,16 @@ class MainActivity : AppCompatActivity() {
         fileName = "${externalCacheDir?.absolutePath}/audiorecordtest.3gp"
 
         binding.playButton.setOnClickListener {
-
+            when (state) {
+                State.RELEASE -> {
+                    onPlay(true)
+                }
+                else -> {}
+            }
         }
 
         binding.recordButton.setOnClickListener {
-            when(state) {
+            when (state) {
                 State.RELEASE -> {
                     checkPermission()
                 }
@@ -60,7 +67,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.stopButton.setOnClickListener {
-
+            when (state) {
+                State.PLAYING -> {
+                    onPlay(false)
+                }
+                else -> {}
+            }
         }
     }
 
@@ -122,6 +134,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun onRecord(isRecord: Boolean) = if (isRecord) startRecording() else stopRecording()
 
+    private fun onPlay(isPlay: Boolean) = if (isPlay) startPlaying() else stopPlaying()
+
     private fun startRecording() {
         state = State.RECORDING
 
@@ -141,7 +155,7 @@ class MainActivity : AppCompatActivity() {
             start()
         }
 
-        changeUI()
+        changeRecordUI()
     }
 
     private fun stopRecording() {
@@ -152,10 +166,10 @@ class MainActivity : AppCompatActivity() {
         recorder = null
         state = State.RELEASE
 
-        changeUI()
+        changeRecordUI()
     }
 
-    private fun changeUI() {
+    private fun changeRecordUI() {
         binding.recordButton.apply {
             setImageDrawable(
                 ContextCompat.getDrawable(
@@ -179,6 +193,48 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.playButton.apply {
+            isEnabled = state == State.RELEASE
+            alpha = if (state == State.RELEASE) 1.0f else 0.3f
+        }
+
+        binding.stopButton.apply {
+            isEnabled = state == State.RELEASE
+            alpha = if (state == State.RELEASE) 1.0f else 0.3f
+        }
+    }
+
+    private fun startPlaying() {
+        state = State.PLAYING
+
+        player = MediaPlayer().apply {
+            try {
+                setDataSource(fileName)
+                prepare()
+            } catch (e: IOException) {
+                Log.e("onPlay", "prepare() failed")
+                Log.e("onPlay", "cause: ${e.cause}, message: ${e.message}")
+            }
+            start()
+        }
+
+        player?.setOnCompletionListener {
+            stopPlaying()
+        }
+
+        changePlayUI()
+    }
+
+    private fun stopPlaying() {
+        state = State.RELEASE
+
+        player?.release()
+        player = null
+
+        changePlayUI()
+    }
+
+    private fun changePlayUI() {
+        binding.recordButton.apply {
             isEnabled = state == State.RELEASE
             alpha = if (state == State.RELEASE) 1.0f else 0.3f
         }
