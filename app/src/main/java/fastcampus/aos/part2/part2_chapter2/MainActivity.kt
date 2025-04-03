@@ -1,6 +1,7 @@
 package fastcampus.aos.part2.part2_chapter2
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -49,6 +50,7 @@ class MainActivity : AppCompatActivity(), OnTimerTickListener {
                 State.RELEASE -> {
                     onPlay(true)
                 }
+
                 else -> {}
             }
         }
@@ -74,6 +76,7 @@ class MainActivity : AppCompatActivity(), OnTimerTickListener {
                 State.PLAYING -> {
                     onPlay(false)
                 }
+
                 else -> {}
             }
         }
@@ -155,6 +158,7 @@ class MainActivity : AppCompatActivity(), OnTimerTickListener {
             start()
         }
 
+        binding.waveFormView.clearData()
         timer.start()
 
         changeRecordUI()
@@ -223,6 +227,9 @@ class MainActivity : AppCompatActivity(), OnTimerTickListener {
             start()
         }
 
+        binding.waveFormView.clearWave()
+        timer.start()
+
         player?.setOnCompletionListener {
             stopPlaying()
         }
@@ -235,6 +242,8 @@ class MainActivity : AppCompatActivity(), OnTimerTickListener {
 
         player?.release()
         player = null
+
+        timer.stop()
 
         changePlayUI()
     }
@@ -282,8 +291,19 @@ class MainActivity : AppCompatActivity(), OnTimerTickListener {
 
     /** listener */
 
+    @SuppressLint("DefaultLocale")
     override fun onTick(duration: Long) {
-        binding.waveFormView.addAmplitude(recorder?.maxAmplitude?.toFloat() ?: 0f)
+        val millSecond = (duration % 1000) / 10
+        val second = (duration / 1000) % 60
+        val minute = (duration / 1000) / 60
+
+        binding.timerTextView.text = String.format("%02d:%02d.%02d", minute, second, millSecond)
+
+        if (state == State.PLAYING) {
+            binding.waveFormView.replayAmplitude(duration.toInt())
+        } else if (state == State.RECORDING) {
+            binding.waveFormView.addAmplitude(recorder?.maxAmplitude?.toFloat() ?: 0f)
+        }
     }
 
     companion object {
