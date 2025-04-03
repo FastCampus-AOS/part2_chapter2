@@ -4,33 +4,59 @@ import android.Manifest
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.media.MediaRecorder
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.core.content.ContextCompat
 import fastcampus.aos.part2.part2_chapter2.databinding.ActivityMainBinding
+import java.io.IOException
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityMainBinding
-
-    companion object {
-        const val REQUEST_RECORD_AUDIO_CODE = 200
+    // 릴리즈 -> 녹음 중 -> 릴리즈
+    // 릴리즈 -> 재생 -> 릴리즈
+    private enum class State {
+        RELEASE, RECORDING, PLAYING
     }
+
+    private lateinit var binding: ActivityMainBinding
+    private var recorder: MediaRecorder? = null
+    private var fileName: String = ""
+    private var state: State = State.RELEASE
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        fileName = "${externalCacheDir?.absolutePath}/audiorecordtest.3gp"
+
         binding.playButton.setOnClickListener {
 
         }
 
         binding.recordButton.setOnClickListener {
-            checkPermission()
+            when(state) {
+                State.RELEASE -> {
+                    checkPermission()
+                }
+
+                State.RECORDING -> {
+                    onRecord(false)
+                }
+
+                State.PLAYING -> {
+
+                }
+            }
         }
 
         binding.stopButton.setOnClickListener {
@@ -38,25 +64,27 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Permission */
+
     private fun checkPermission() {
         when {
             ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.RECORD_AUDIO
             ) == PackageManager.PERMISSION_GRANTED -> {
-                // 권한 허가 후 동작 추가
+                onRecord(true)
             }
 
             ActivityCompat.shouldShowRequestPermissionRationale(
                 this,
                 Manifest.permission.RECORD_AUDIO
             ) -> {
-                // 권한 획득 이유 설명
                 showPermissionRationalDialog()
             }
 
             else -> {
-                requestPermissions(
+                ActivityCompat.requestPermissions(
+                    this,
                     arrayOf(Manifest.permission.RECORD_AUDIO),
                     REQUEST_RECORD_AUDIO_CODE
                 )
@@ -75,16 +103,88 @@ class MainActivity : AppCompatActivity() {
             requestCode == REQUEST_RECORD_AUDIO_CODE && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
 
         if (audioRecordPermissionGranted) {
-            // TODO 녹음 작업 시작
+            onRecord(true)
         } else {
-            // 시스템 권한 체크
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.RECORD_AUDIO)) {
+            if (
+                ActivityCompat.shouldShowRequestPermissionRationale(
+                    this,
+                    Manifest.permission.RECORD_AUDIO
+                )
+            ) {
                 showPermissionRationalDialog()
             } else {
                 showPermissionSettingDialog()
             }
         }
     }
+
+    /** Click Action */
+
+    private fun onRecord(isRecord: Boolean) = if (isRecord) startRecording() else stopRecording()
+
+    private fun startRecording() {
+        state = State.RECORDING
+
+        recorder = MediaRecorder().apply {
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
+            setOutputFile(fileName)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
+
+            try {
+                prepare()
+            } catch (e: IOException) {
+                Log.e("onRecord", "prepare() failed")
+                Log.e("onRecord", "cause: ${e.cause}, message: ${e.message}")
+            }
+
+            start()
+        }
+
+        changeUI()
+    }
+
+    private fun stopRecording() {
+        recorder?.apply {
+            stop()
+            release()
+        }
+        recorder = null
+        state = State.RELEASE
+
+        changeUI()
+    }
+
+    private fun changeUI() {
+        binding.recordButton.apply {
+            setImageDrawable(
+                ContextCompat.getDrawable(
+                    applicationContext,
+                    if (state == State.RELEASE)
+                        R.drawable.baseline_fiber_manual_record_24
+                    else
+                        R.drawable.baseline_pause_24
+                )
+            )
+
+            imageTintList = ColorStateList.valueOf(
+                ContextCompat.getColor(
+                    applicationContext,
+                    if (state == State.RELEASE)
+                        R.color.red
+                    else
+                        R.color.black
+                )
+            )
+        }
+
+        binding.playButton.apply {
+            isEnabled = state == State.RELEASE
+            alpha = if (state == State.RELEASE) 1.0f else 0.3f
+        }
+    }
+
+    /** Dialog */
 
     private fun showPermissionRationalDialog() {
         AlertDialog.Builder(this)
@@ -108,11 +208,17 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    /** Move */
+
     private fun navigateToAppSetting() {
         startActivity(
             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                 data = Uri.fromParts("package", packageName, null)
             }
         )
+    }
+
+    companion object {
+        const val REQUEST_RECORD_AUDIO_CODE = 200
     }
 }
