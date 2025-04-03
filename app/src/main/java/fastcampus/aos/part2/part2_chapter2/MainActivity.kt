@@ -20,13 +20,15 @@ import androidx.core.content.ContextCompat
 import fastcampus.aos.part2.part2_chapter2.databinding.ActivityMainBinding
 import java.io.IOException
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), OnTimerTickListener {
 
     // 릴리즈 -> 녹음 중 -> 릴리즈
     // 릴리즈 -> 재생 -> 릴리즈
     private enum class State {
         RELEASE, RECORDING, PLAYING
     }
+
+    private lateinit var timer: Timer
 
     private lateinit var binding: ActivityMainBinding
     private var recorder: MediaRecorder? = null
@@ -40,6 +42,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         fileName = "${externalCacheDir?.absolutePath}/audiorecordtest.3gp"
+        timer = Timer(this)
 
         binding.playButton.setOnClickListener {
             when (state) {
@@ -134,11 +137,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun onRecord(isRecord: Boolean) = if (isRecord) startRecording() else stopRecording()
 
-    private fun onPlay(isPlay: Boolean) = if (isPlay) startPlaying() else stopPlaying()
-
     private fun startRecording() {
         state = State.RECORDING
-
         recorder = MediaRecorder().apply {
             setAudioSource(MediaRecorder.AudioSource.MIC)
             setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
@@ -155,16 +155,20 @@ class MainActivity : AppCompatActivity() {
             start()
         }
 
+        timer.start()
+
         changeRecordUI()
     }
 
     private fun stopRecording() {
+        state = State.RELEASE
         recorder?.apply {
             stop()
             release()
         }
         recorder = null
-        state = State.RELEASE
+
+        timer.stop()
 
         changeRecordUI()
     }
@@ -202,6 +206,8 @@ class MainActivity : AppCompatActivity() {
             alpha = if (state == State.RELEASE) 1.0f else 0.3f
         }
     }
+
+    private fun onPlay(isPlay: Boolean) = if (isPlay) startPlaying() else stopPlaying()
 
     private fun startPlaying() {
         state = State.PLAYING
@@ -272,6 +278,12 @@ class MainActivity : AppCompatActivity() {
                 data = Uri.fromParts("package", packageName, null)
             }
         )
+    }
+
+    /** listener */
+
+    override fun onTick(duration: Long) {
+        binding.waveFormView.addAmplitude(recorder?.maxAmplitude?.toFloat() ?: 0f)
     }
 
     companion object {

@@ -19,7 +19,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
-    <View
+    <fastcampus.aos.part2.part2_chapter2.WaveFormView
         android:id="@+id/waveFormView"
         android:layout_width="0dp"
         android:layout_height="250dp"
