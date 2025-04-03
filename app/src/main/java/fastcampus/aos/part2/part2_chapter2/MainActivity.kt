@@ -80,7 +80,21 @@ class MainActivity : AppCompatActivity(), OnTimerTickListener {
                 else -> {}
             }
         }
+
+        initViews()
     }
+
+    private fun initViews() {
+        binding.playButton.apply {
+            isEnabled = false
+            alpha = 0.3f
+        }
+        binding.stopButton.apply {
+            isEnabled = false
+            alpha = 0.3f
+        }
+    }
+
 
     /** Permission */
 
@@ -259,7 +273,7 @@ class MainActivity : AppCompatActivity(), OnTimerTickListener {
 
     private fun showPermissionRationalDialog() {
         AlertDialog.Builder(this)
-            .setMessage("녹음 권한을 켜주셔야 앱을 정상적으로 사용할 수 있습니다.")
+            .setMessage(getString(R.string.permission_rational_message))
             .setPositiveButton("권한 허용하기") { _, _ ->
                 ActivityCompat.requestPermissions(
                     this,
@@ -272,7 +286,7 @@ class MainActivity : AppCompatActivity(), OnTimerTickListener {
 
     private fun showPermissionSettingDialog() {
         AlertDialog.Builder(this)
-            .setMessage("녹음 권한을 켜주셔야 앱을 정상적으로 사용할 수 있습니다.\n앱 설정 화면으로 진입하셔서 권한을 켜주세요.")
+            .setMessage(getString(R.string.permission_setting_message))
             .setPositiveButton("권한 변경하러 가기") { _, _ ->
                 navigateToAppSetting()
             }.setNegativeButton("취소") { dialog, _ -> dialog.cancel() }
@@ -300,7 +314,7 @@ class MainActivity : AppCompatActivity(), OnTimerTickListener {
         binding.timerTextView.text = String.format("%02d:%02d.%02d", minute, second, millSecond)
 
         if (state == State.PLAYING) {
-            binding.waveFormView.replayAmplitude(duration.toInt())
+            binding.waveFormView.replayAmplitude()
         } else if (state == State.RECORDING) {
             binding.waveFormView.addAmplitude(recorder?.maxAmplitude?.toFloat() ?: 0f)
         }
